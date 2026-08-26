@@ -166,9 +166,24 @@
     .chart-container .legend-swatch {
       width: 12px; height: 12px; border-radius: 3px; display: inline-block;
     }
+    .senai-logo {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+    }
+    .senai-logo img {
+      height: 36px;
+      width: auto;
+      display: block;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+    }
   </style>
 </head>
 <body>
+  <a class="senai-logo" href="https://www.portaldaindustria.com.br/senai/" target="_blank" rel="noopener" title="SENAI">
+    <img src="/static/senai_logo.png" alt="Logo SENAI" />
+  </a>
   <div class="container">
     <h1>Assistente Corporativo IA</h1>
     <p class="subtitle">Análise de indicadores de produtividade e retrabalho</p>
