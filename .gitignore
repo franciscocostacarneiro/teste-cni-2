@@ -1,0 +1,24 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Variáveis de ambiente (contém segredos de API)
+.env
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Bases locais / banco de dados
+*.sqlite
+*.db
+checkpoints.db
+
+# Arquivos temporários e de debug
+llm_factory_src.txt
+
+# IDE / editores
+.vscode/
+.idea/

@@ -1,0 +1,9 @@
+{
+    "dependencies": [
+        "."
+    ],
+    "graphs": {
+        "agent": "./agente_rag.py:agente_corporativo"
+    },
+    "env": ".env"
+}
