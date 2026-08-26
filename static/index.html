@@ -141,6 +141,31 @@
     }
     #send:hover { opacity: 0.9; }
     #send:disabled { opacity: 0.5; cursor: not-allowed; }
+    .chart-container {
+      margin-top: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+    .chart-container .chart-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .chart-container svg { width: 100%; height: auto; display: block; }
+    .chart-container .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .chart-container .legend-item { display: flex; align-items: center; gap: 6px; }
+    .chart-container .legend-swatch {
+      width: 12px; height: 12px; border-radius: 3px; display: inline-block;
+    }
   </style>
 </head>
 <body>
@@ -167,7 +192,8 @@
       "Como evoluiu a produtividade entre janeiro e março?",
       "Por que a produtividade caiu em fevereiro?",
       "Existe alguma relação entre produtividade e retrabalho no período?",
-      "Considerando os dados disponíveis, quais recomendações você daria para a gestão?"
+      "Considerando os dados disponíveis, quais recomendações você daria para a gestão?",
+      "Gere um gráfico com a evolução da produtividade e do retrabalho nos últimos meses"
     ];
 
     const questionsEl = document.getElementById('questions');
@@ -183,7 +209,7 @@
     const inputEl = document.getElementById('input');
     const sendBtn = document.getElementById('send');
 
-    function addMessage(text, role, tools) {
+    function addMessage(text, role, tools, chart) {
       const div = document.createElement('div');
       div.className = `msg ${role}`;
       div.textContent = text;
@@ -193,8 +219,142 @@
         t.innerHTML = '🧰 ' + tools.map(x => `<span class="tag">${x}</span>`).join('');
         div.appendChild(t);
       }
+      if (chart && chart.data && chart.data.length) {
+        div.appendChild(renderChart(chart));
+      }
       chatEl.appendChild(div);
       chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    function renderChart(spec) {
+      const container = document.createElement('div');
+      container.className = 'chart-container';
+
+      const title = document.createElement('div');
+      title.className = 'chart-title';
+      title.textContent = spec.title || 'Gráfico';
+      container.appendChild(title);
+
+      const W = 640, H = 300, padL = 50, padR = 20, padT = 20, padB = 40;
+      const innerW = W - padL - padR;
+      const innerH = H - padT - padB;
+
+      // x = índice do mês, y = valor
+      const labels = spec.data.map(d => d[spec.xField]);
+      const seriesList = spec.series || [];
+      const allValues = [];
+      spec.data.forEach(d => {
+        seriesList.forEach(s => {
+          const v = d[s.yField];
+          if (v !== undefined && v !== null) allValues.push(Number(v));
+        });
+      });
+      const minV = 0;
+      const maxV = allValues.length ? Math.max(...allValues) : 0;
+
+      const xFor = i => padL + (labels.length === 1 ? innerW / 2 : (i / (labels.length - 1)) * innerW);
+      const yFor = v => padT + innerH - ((v - minV) / (maxV - minV || 1)) * innerH;
+
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+      // grid + labels do eixo Y
+      const yTicks = 5;
+      for (let t = 0; t <= yTicks; t++) {
+        const val = minV + (maxV - minV) * (t / yTicks);
+        const y = yFor(val);
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', padL); line.setAttribute('x2', W - padR);
+        line.setAttribute('y1', y); line.setAttribute('y2', y);
+        line.setAttribute('stroke', '#334155'); line.setAttribute('stroke-width', '1');
+        svg.appendChild(line);
+        const txt = document.createElementNS(svgNS, 'text');
+        txt.setAttribute('x', padL - 8); txt.setAttribute('y', y + 4);
+        txt.setAttribute('text-anchor', 'end'); txt.setAttribute('font-size', '11');
+        txt.setAttribute('fill', '#94a3b8');
+        txt.textContent = Math.round(val);
+        svg.appendChild(txt);
+      }
+
+      const defaultColors = ['#38bdf8', '#f472b6', '#4ade80', '#fbbf24', '#a78bfa'];
+      const colorFor = (s, idx) => s.color || defaultColors[idx % defaultColors.length];
+
+      const isBar = spec.chart_type === 'bar';
+
+      seriesList.forEach((s, idx) => {
+        const color = colorFor(s, idx);
+        const pts = spec.data.map((d, i) => {
+          const v = d[s.yField];
+          return v === undefined || v === null ? null : { x: xFor(i), y: yFor(Number(v)), v: Number(v) };
+        });
+
+        if (isBar) {
+          const n = labels.length;
+          const groupW = innerW / n;
+          const barW = groupW * 0.7 / seriesList.length;
+          pts.forEach((p, i) => {
+            if (!p) return;
+            const x = p.x - (seriesList.length - 1) * barW / 2 + idx * barW;
+            const rect = document.createElementNS(svgNS, 'rect');
+            rect.setAttribute('x', x - barW / 2);
+            rect.setAttribute('y', p.y);
+            rect.setAttribute('width', barW);
+            rect.setAttribute('height', padT + innerH - p.y);
+            rect.setAttribute('fill', color);
+            rect.setAttribute('rx', '2');
+            svg.appendChild(rect);
+          });
+        } else {
+          let path = '';
+          pts.forEach((p, i) => {
+            if (!p) return;
+            path += (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1) + ' ';
+          });
+          const pathEl = document.createElementNS(svgNS, 'path');
+          pathEl.setAttribute('d', path.trim());
+          pathEl.setAttribute('fill', 'none');
+          pathEl.setAttribute('stroke', color);
+          pathEl.setAttribute('stroke-width', '2.5');
+          svg.appendChild(pathEl);
+          pts.forEach(p => {
+            if (!p) return;
+            const c = document.createElementNS(svgNS, 'circle');
+            c.setAttribute('cx', p.x); c.setAttribute('cy', p.y);
+            c.setAttribute('r', '4'); c.setAttribute('fill', color);
+            svg.appendChild(c);
+          });
+        }
+      });
+
+      // labels do eixo X
+      labels.forEach((lab, i) => {
+        const txt = document.createElementNS(svgNS, 'text');
+        txt.setAttribute('x', xFor(i)); txt.setAttribute('y', H - 15);
+        txt.setAttribute('text-anchor', 'middle'); txt.setAttribute('font-size', '11');
+        txt.setAttribute('fill', '#e2e8f0');
+        txt.textContent = lab;
+        svg.appendChild(txt);
+      });
+
+      container.appendChild(svg);
+
+      // legenda
+      const legend = document.createElement('div');
+      legend.className = 'chart-legend';
+      seriesList.forEach((s, idx) => {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        const swatch = document.createElement('span');
+        swatch.className = 'legend-swatch';
+        swatch.style.background = colorFor(s, idx);
+        item.appendChild(swatch);
+        item.appendChild(document.createTextNode(s.label || s.yField));
+        legend.appendChild(item);
+      });
+      container.appendChild(legend);
+
+      return container;
     }
 
     function addLoading() {
@@ -225,7 +385,7 @@
         if (!res.ok) {
           addMessage('Erro: ' + (data.detail || res.statusText), 'agent');
         } else {
-          addMessage(data.answer, 'agent', data.tools_used);
+          addMessage(data.answer, 'agent', data.tools_used, data.chart);
         }
       } catch (err) {
         addMessage('Erro de conexão: ' + err.message, 'agent');

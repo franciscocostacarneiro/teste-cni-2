@@ -15,9 +15,11 @@ usar para respondê-la:
 |---|---|
 | `get_indicators` | Consulta os valores numéricos dos indicadores por mês |
 | `search_documents` | Busca contexto explicativo nos documentos corporativos |
+| `gerar_grafico` | Gera um gráfico (linha/barra) a partir dos indicadores |
 
 As respostas são produzidas por um LLM usando o padrão **ReAct** (raciocina →
-chama ferramentas → responde).
+chama ferramentas → responde), e os gráficos são renderizados na própria
+interface web.
 
 ---
 
@@ -95,11 +97,15 @@ para perguntas livres.
 ```json
 {
   "answer": "A produtividade caiu em fevereiro...",
-  "tools_used": ["get_indicators", "search_documents"]
+  "tools_used": ["get_indicators", "search_documents"],
+  "chart": null
 }
 ```
 
-`tools_used` lista as ferramentas que o agente acionou para responder.
+`tools_used` lista as ferramentas que o agente acionou para responder. Quando o
+agente gera um gráfico (tool `gerar_grafico`), o campo `chart` contém o spec
+(título, tipo, eixos, séries e dados) que o frontend renderiza; caso contrário,
+é `null`.
 
 Documentação interativa (Swagger) disponível em `/docs`.
 
@@ -115,8 +121,9 @@ python -m pytest -v
 
 A suíte cobre:
 
-- **`test_tools.py`** — valida o comportamento das duas ferramentas
-  (`get_indicators` e `search_documents`) com filtros, ausência de resultados e fallback.
+- **`test_tools.py`** — valida o comportamento das ferramentas
+  (`get_indicators`, `search_documents` e `gerar_grafico`) com filtros, ausência
+  de resultados, fallback e transformação dos dados do gráfico.
 - **`test_api.py`** — valida o endpoint `/agent/query` (estrutura da resposta,
   validação de payload) e a rota do frontend.
 
@@ -158,9 +165,10 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
 ```
 .
 ├── agente_rag.py      # Agente corporativo (LangChain + OpenRouter)
-├── tools.py           # Dados do PRD + as duas ferramentas (@tool)
-├── main.py            # API FastAPI + rota do frontend
-├── static/index.html  # Interface web com as perguntas clicáveis
+├── tools.py           # Dados do PRD + get_indicators e search_documents (@tool)
+├── chart_tool.py      # Ferramenta gerar_grafico (@tool) que converte indicadores em gráfico
+├── main.py            # API FastAPI + rota do frontend + captura do artifact do gráfico
+├── static/index.html  # Interface web com perguntas clicáveis + renderizador de gráficos
 ├── test_tools.py      # Testes das ferramentas
 ├── test_api.py        # Testes do endpoint e do frontend
 ├── requirements.txt   # Dependências
@@ -173,10 +181,11 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
 
 | Arquivo | O que é | Papel na solução |
 |---|---|---|
-| [`agente_rag.py`](agente_rag.py) | Código do agente de IA | Define o **prompt de sistema**, cria o cliente do LLM (OpenRouter) e instancia o agente **ReAct** com as duas ferramentas. É o "cérebro" da aplicação. |
-| [`tools.py`](tools.py) | Dados + ferramentas | **Onde ficam os dados do PRD** (indicadores e documentos). Expõe as duas funções `@tool` (`get_indicators` e `search_documents`) consumidas pelo agente. |
-| [`main.py`](main.py) | API (FastAPI) | Expõe o endpoint `POST /agent/query`, orquestra a chamada ao agente, extrai as ferramentas usadas e serve a interface web. |
-| [`static/index.html`](static/index.html) | Frontend | Interface com as 6 perguntas clicáveis, chat e campo livre. Comunica-se com a API via `fetch`. |
+| [`agente_rag.py`](agente_rag.py) | Código do agente de IA | Define o **prompt de sistema**, cria o cliente do LLM (OpenRouter) e instancia o agente **ReAct** com as três ferramentas. É o "cérebro" da aplicação. |
+| [`tools.py`](tools.py) | Dados + ferramentas | **Onde ficam os dados do PRD** (indicadores e documentos). Expõe `@tool` `get_indicators` e `search_documents`. |
+| [`chart_tool.py`](chart_tool.py) | Ferramenta de gráficos | Define a `@tool` `gerar_grafico`, que transforma os indicadores em um spec de gráfico (config + dados) devolvido como artifact. |
+| [`main.py`](main.py) | API (FastAPI) | Expõe `POST /agent/query`, orquestra a chamada ao agente, extrai as ferramentas usadas **e o artifact do gráfico**, e serve a interface web. |
+| [`static/index.html`](static/index.html) | Frontend | Interface com as perguntas clicáveis, chat, campo livre e um **renderizador de gráficos SVG**. |
 | [`test_tools.py`](test_tools.py) | Testes | Testes unitários das duas ferramentas. |
 | [`test_api.py`](test_api.py) | Testes | Testes de integração do endpoint e do frontend. |
 | [`requirements.txt`](requirements.txt) | Dependências | Lista de pacotes Python (`fastapi`, `langchain`, `pytest`, etc.). |
@@ -232,9 +241,11 @@ flowchart LR
     API --> A[agente_rag.py<br/>Agente ReAct]
     A -->|tool calling| GI[get_indicators<br/>lê _INDICATORS]
     A -->|tool calling| SD[search_documents<br/>lê _DOCUMENTS]
+    A -->|tool calling| GG[gerar_grafico<br/>lê _INDICATORS]
     GI -->|valores| A
     SD -->|trechos| A
-    A -->|resposta final| U
+    GG -->|spec do gráfico| A
+    A -->|resposta final + gráfico| U
 ```
 
 > Os dados estão **embarcados no código** (`tools.py`) por simplicidade, já que

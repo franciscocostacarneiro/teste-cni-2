@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 
 from agente_rag import agente_corporativo
 
@@ -31,6 +31,7 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     answer: str
     tools_used: list[str]
+    chart: dict | None = None
 
 
 @app.post("/agent/query", response_model=QueryResponse)
@@ -47,11 +48,16 @@ async def query_agent(request: QueryRequest):
 
     # coleta os nomes de todas as tools chamadas durante o ciclo ReAct
     tools_used: list[str] = []
+    # captura o artifact (spec do gráfico) caso a tool gerar_grafico tenha sido usada
+    chart: dict | None = None
     for msg in messages:
         if isinstance(msg, AIMessage) and msg.tool_calls:
             for tc in msg.tool_calls:
                 if tc["name"] not in tools_used:
                     tools_used.append(tc["name"])
+        if isinstance(msg, ToolMessage):
+            if msg.name == "gerar_grafico" and msg.artifact:
+                chart = msg.artifact
 
     answer = messages[-1].content if messages else "Sem resposta."
-    return QueryResponse(answer=answer, tools_used=tools_used)
+    return QueryResponse(answer=answer, tools_used=tools_used, chart=chart)

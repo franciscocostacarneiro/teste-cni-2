@@ -1,4 +1,5 @@
 from tools import get_indicators, search_documents
+from chart_tool import gerar_grafico, SeriesDefinition
 
 
 def test_get_indicators_por_indicador_e_mes():
@@ -41,3 +42,22 @@ def test_search_documents_retorna_algo_quando_sem_match():
     resultado = search_documents.func(query="xyz abc qwerty")
     # fallback: retorna todos os documentos
     assert "Documento" in resultado
+
+
+def test_gerar_grafico_monta_dados_wide():
+    msg, spec = gerar_grafico.func(
+        title="Evolução",
+        xField="mes",
+        series=[
+            SeriesDefinition(yField="Produtividade", label="Produtividade"),
+            SeriesDefinition(yField="Retrabalho", label="Retrabalho"),
+        ],
+        explanation="teste",
+    )
+    assert "teste" == msg
+    # os dados são transformados: uma linha por mês, com coluna por indicador
+    assert len(spec["data"]) == 3  # Janeiro, Fevereiro, Março
+    assert spec["data"][0]["mes"] == "Janeiro"
+    assert spec["data"][0]["Produtividade"] == 87
+    assert spec["data"][0]["Retrabalho"] == 12
+    assert spec["series"][0]["yField"] == "Produtividade"
