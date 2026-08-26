@@ -24,7 +24,7 @@ Regras obrigatórias:
 
 # OpenRouter é compatível com o protocolo OpenAI; basta apontar base_url
 model = ChatOpenAI(
-    model=os.getenv("OPENROUTER_MODEL", "tencent/hy3"),
+    model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
     base_url="https://openrouter.ai/api/v1",
     api_key=os.getenv("OPENROUTER_API_KEY"),
 )
