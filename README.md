@@ -107,8 +107,23 @@ Documentação interativa (Swagger) disponível em `/docs`.
 
 ## 🧪 Como testar
 
-As 6 perguntas do PRD podem ser testadas diretamente na interface web. Para testar
-via terminal (usando `curl` ou PowerShell):
+### Testes automatizados (pytest)
+
+```powershell
+python -m pytest -v
+```
+
+A suíte cobre:
+
+- **`test_tools.py`** — valida o comportamento das duas ferramentas
+  (`get_indicators` e `search_documents`) com filtros, ausência de resultados e fallback.
+- **`test_api.py`** — valida o endpoint `/agent/query` (estrutura da resposta,
+  validação de payload) e a rota do frontend.
+
+### Teste manual via interface web
+
+As 6 perguntas do PRD podem ser testadas diretamente em `http://127.0.0.1:8050/`.
+Para testar via terminal:
 
 ```powershell
 Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
@@ -146,6 +161,8 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
 ├── tools.py           # As duas ferramentas (@tool get_indicators, search_documents)
 ├── main.py            # API FastAPI + rota do frontend
 ├── static/index.html  # Interface web com as perguntas clicáveis
+├── test_tools.py      # Testes das ferramentas
+├── test_api.py        # Testes do endpoint e do frontend
 ├── requirements.txt   # Dependências
 ├── .env.example       # Exemplo de variáveis de ambiente
 ├── langgraph.json     # Configuração do grafo do agente
@@ -160,7 +177,5 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
   vetorial (RAG) para corpora maiores ou buscas semânticas.
 - **Sem memória de conversa** — cada requisição é independente (stateless); poderia
   usar `checkpointer` para manter histórico por sessão.
-- **Sem testes automatizados** — uma suíte `pytest` (unitários nas tools e de
-  integração no endpoint) deveria ser adicionada.
 - **Tolerância a erros** — tratar timeouts/rate-limits do OpenRouter com retry.
 - **Observabilidade** — logging estruturado e métricas de latência por tool call.
