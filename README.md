@@ -158,7 +158,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
 ```
 .
 ├── agente_rag.py      # Agente corporativo (LangChain + OpenRouter)
-├── tools.py           # As duas ferramentas (@tool get_indicators, search_documents)
+├── tools.py           # Dados do PRD + as duas ferramentas (@tool)
 ├── main.py            # API FastAPI + rota do frontend
 ├── static/index.html  # Interface web com as perguntas clicáveis
 ├── test_tools.py      # Testes das ferramentas
@@ -168,6 +168,78 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
 ├── langgraph.json     # Configuração do grafo do agente
 └── PRD.md             # Enunciado da prova técnica
 ```
+
+### Descrição de cada arquivo
+
+| Arquivo | O que é | Papel na solução |
+|---|---|---|
+| [`agente_rag.py`](agente_rag.py) | Código do agente de IA | Define o **prompt de sistema**, cria o cliente do LLM (OpenRouter) e instancia o agente **ReAct** com as duas ferramentas. É o "cérebro" da aplicação. |
+| [`tools.py`](tools.py) | Dados + ferramentas | **Onde ficam os dados do PRD** (indicadores e documentos). Expõe as duas funções `@tool` (`get_indicators` e `search_documents`) consumidas pelo agente. |
+| [`main.py`](main.py) | API (FastAPI) | Expõe o endpoint `POST /agent/query`, orquestra a chamada ao agente, extrai as ferramentas usadas e serve a interface web. |
+| [`static/index.html`](static/index.html) | Frontend | Interface com as 6 perguntas clicáveis, chat e campo livre. Comunica-se com a API via `fetch`. |
+| [`test_tools.py`](test_tools.py) | Testes | Testes unitários das duas ferramentas. |
+| [`test_api.py`](test_api.py) | Testes | Testes de integração do endpoint e do frontend. |
+| [`requirements.txt`](requirements.txt) | Dependências | Lista de pacotes Python (`fastapi`, `langchain`, `pytest`, etc.). |
+| [`.env.example`](.env.example) | Configuração de exemplo | Modelo das variáveis de ambiente (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`). Copie para `.env`. |
+| [`langgraph.json`](langgraph.json) | Configuração do grafo | Aponta o grafo do agente usado pelo runtime LangGraph. |
+| [`PRD.md`](PRD.md) | Enunciado | Documento da prova técnica (requisitos e dados de entrada). |
+
+---
+
+## 📊 Onde estão os dados (e como são consumidos)
+
+O PRD fornece dois conjuntos de dados, ambos definidos **dentro de `tools.py`**:
+
+### 1. Indicadores estruturados (tabela)
+
+A tabela de indicadores (mês × indicador × valor) está na variável
+`_INDICATORS`:
+
+```python
+_INDICATORS = [
+    {"month": "Janeiro",   "indicator": "Produtividade", "value": 87},
+    {"month": "Fevereiro", "indicator": "Produtividade", "value": 82},
+    {"month": "Março",     "indicator": "Produtividade", "value": 91},
+    {"month": "Janeiro",   "indicator": "Retrabalho",    "value": 12},
+    {"month": "Fevereiro", "indicator": "Retrabalho",    "value": 18},
+    {"month": "Março",     "indicator": "Retrabalho",    "value": 10},
+]
+```
+
+**Consumido por:** a ferramenta `get_indicators()`, que filtra por
+`indicator` e/ou `month` e devolve as linhas correspondentes ao agente.
+
+### 2. Documentos corporativos (texto)
+
+Os três documentos (Janeiro, Fevereiro e Março) estão na variável `_DOCUMENTS`:
+
+```python
+_DOCUMENTS = [
+    {"title": "Documento 1 – Janeiro",  "content": "O indicador de produtividade..."},
+    {"title": "Documento 2 – Fevereiro","content": "Em fevereiro ocorreu uma redução..."},
+    {"title": "Documento 3 – Março",    "content": "Em março ocorreu recuperação..."},
+]
+```
+
+**Consumido por:** a ferramenta `search_documents()`, que faz uma busca por
+palavras-chave (com remoção de stop words) e devolve os trechos relevantes.
+
+### Fluxo de consumo dos dados
+
+```mermaid
+flowchart LR
+    U[Usuário] -->|pergunta| API[main.py /agent/query]
+    API --> A[agente_rag.py<br/>Agente ReAct]
+    A -->|tool calling| GI[get_indicators<br/>lê _INDICATORS]
+    A -->|tool calling| SD[search_documents<br/>lê _DOCUMENTS]
+    GI -->|valores| A
+    SD -->|trechos| A
+    A -->|resposta final| U
+```
+
+> Os dados estão **embarcados no código** (`tools.py`) por simplicidade, já que
+> o corpus é pequeno e fixo. Para escalar, eles poderiam ser movidos para JSON,
+> CSV, SQLite ou um banco vetorial (ver Limitações).
 
 ---
 
