@@ -57,18 +57,24 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+> As versões estão fixadas (`==`) e o conjunto foi validado numa venv limpa.
+> Para conferir se a resolução ficou consistente: `pip check`.
+
 ### 5. Configurar a chave da API
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Abra o arquivo `.env` e preencha sua chave real:
+Abra o arquivo `.env` e preencha com a **sua** chave da OpenRouter:
 
 ```
 OPENROUTER_API_KEY=sk-or-v1-...sua_chave
 OPENROUTER_MODEL=openai/gpt-4o-mini
 ```
+
+> Sem essa variável a aplicação não inicia e exibe uma mensagem explicando o
+> que falta. Os testes automatizados, porém, rodam sem chave (ver seção de testes).
 
 ### 6. Iniciar a aplicação
 
@@ -124,6 +130,10 @@ Documentação interativa (Swagger) disponível em `/docs`.
 python -m pytest -v
 ```
 
+A suíte roda **offline e sem chave de API**: o agente é substituído por um
+duplo de teste (`conftest.py` + fixture `agente_fake`), então nenhuma chamada
+real ao LLM é feita e nenhum crédito é consumido.
+
 A suíte cobre:
 
 - **`test_tools.py`** — valida o comportamento das ferramentas
@@ -176,6 +186,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
 ├── static/index.html  # Interface web com perguntas clicáveis + renderizador de gráficos
 ├── test_tools.py      # Testes das ferramentas
 ├── test_api.py        # Testes do endpoint e do frontend
+├── conftest.py        # Configuração do pytest (permite rodar os testes sem chave de API)
 ├── requirements.txt   # Dependências
 ├── .env.example       # Exemplo de variáveis de ambiente
 ├── langgraph.json     # Configuração do grafo do agente
@@ -193,10 +204,23 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
 | [`static/index.html`](static/index.html) | Frontend | Interface com as perguntas clicáveis, chat, campo livre e um **renderizador de gráficos SVG**. |
 | [`test_tools.py`](test_tools.py) | Testes | Testes unitários das três ferramentas. |
 | [`test_api.py`](test_api.py) | Testes | Testes de integração do endpoint e do frontend. |
+| [`conftest.py`](conftest.py) | Configuração do pytest | Define uma chave fictícia para que a suíte rode sem `.env`. |
 | [`requirements.txt`](requirements.txt) | Dependências | Lista de pacotes Python (`fastapi`, `langchain`, `pytest`, etc.). |
 | [`.env.example`](.env.example) | Configuração de exemplo | Modelo das variáveis de ambiente (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`). Copie para `.env`. |
 | [`langgraph.json`](langgraph.json) | Configuração do grafo | Aponta o grafo do agente usado pelo runtime LangGraph. |
 | [`PRD.md`](PRD.md) | Enunciado | Documento da prova técnica (requisitos e dados de entrada). |
+
+---
+
+## 🩺 Solução de problemas
+
+| Sintoma | Causa | O que fazer |
+|---|---|---|
+| `RuntimeError: OPENROUTER_API_KEY não definida` | Falta o arquivo `.env` | Execute o passo 5 (`Copy-Item .env.example .env`) e preencha a chave. |
+| `ImportError: cannot import name 'ExecutionInfo' from 'langgraph.runtime'` | Versões de `langgraph` e `langgraph-prebuilt` incompatíveis na venv | Recrie a venv do zero e reinstale: `pip install -r requirements.txt`. Confirme com `pip check`. |
+| `python` não encontrado / versão antiga | Python < 3.10 | Instale Python 3.10 ou superior e recrie a venv. |
+| A porta 8050 já está em uso | Outro processo ocupando a porta | Use outra porta: `python -m uvicorn main:app --port 8060`. |
+| O agente responde sem usar ferramentas | Modelo sem tool calling confiável | Mantenha `OPENROUTER_MODEL=openai/gpt-4o-mini` no `.env`. |
 
 ---
 

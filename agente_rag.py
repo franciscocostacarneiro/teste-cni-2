@@ -8,6 +8,13 @@ from chart_tool import gerar_grafico
 
 load_dotenv()
 
+_API_KEY = os.getenv("OPENROUTER_API_KEY")
+if not _API_KEY:
+    raise RuntimeError(
+        "OPENROUTER_API_KEY não definida. Copie .env.example para .env "
+        "e preencha com a sua chave da OpenRouter (https://openrouter.ai/keys)."
+    )
+
 _SYSTEM_PROMPT = """
 Você é um assistente corporativo especializado em análise de indicadores de desempenho.
 
@@ -29,7 +36,7 @@ Regras obrigatórias:
 model = ChatOpenAI(
     model=os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
     base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
+    api_key=_API_KEY,
 )
 
 agente_corporativo = create_agent(
