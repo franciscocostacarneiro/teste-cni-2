@@ -4,12 +4,15 @@ API de assistente corporativo que responde perguntas em linguagem natural sobre
 indicadores de desempenho (produtividade e retrabalho), combinando um agente de
 IA (LangChain) com **tool calling** e integração com LLM via **OpenRouter**.
 
+O agente possui **3 ferramentas (tools)**: `get_indicators`, `search_documents`
+e `gerar_grafico`.
+
 ---
 
 ## 🧠 O que a aplicação faz
 
-O assistente recebe uma pergunta e decide, de forma autônoma, quais ferramentas
-usar para respondê-la:
+O assistente recebe uma pergunta e decide, de forma autônoma, quais das **3
+ferramentas** usar para respondê-la:
 
 | Ferramenta | Função |
 |---|---|
@@ -186,7 +189,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8050/agent/query" `
 | [`chart_tool.py`](chart_tool.py) | Ferramenta de gráficos | Define a `@tool` `gerar_grafico`, que transforma os indicadores em um spec de gráfico (config + dados) devolvido como artifact. |
 | [`main.py`](main.py) | API (FastAPI) | Expõe `POST /agent/query`, orquestra a chamada ao agente, extrai as ferramentas usadas **e o artifact do gráfico**, e serve a interface web. |
 | [`static/index.html`](static/index.html) | Frontend | Interface com as perguntas clicáveis, chat, campo livre e um **renderizador de gráficos SVG**. |
-| [`test_tools.py`](test_tools.py) | Testes | Testes unitários das duas ferramentas. |
+| [`test_tools.py`](test_tools.py) | Testes | Testes unitários das três ferramentas. |
 | [`test_api.py`](test_api.py) | Testes | Testes de integração do endpoint e do frontend. |
 | [`requirements.txt`](requirements.txt) | Dependências | Lista de pacotes Python (`fastapi`, `langchain`, `pytest`, etc.). |
 | [`.env.example`](.env.example) | Configuração de exemplo | Modelo das variáveis de ambiente (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL`). Copie para `.env`. |
