@@ -4,6 +4,8 @@ API de assistente corporativo que responde perguntas em linguagem natural sobre
 indicadores de desempenho (produtividade e retrabalho), combinando um agente de
 IA (LangChain) com **tool calling** e integração com LLM via **OpenRouter**.
 
+![Assistente Corporativo IA - interface do sistema](static/teste_sistema.png)
+
 O agente possui **3 ferramentas (tools)**: `get_indicators`, `search_documents`
 e `gerar_grafico`.
 
