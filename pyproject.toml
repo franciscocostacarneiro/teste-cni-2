@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "assistente-corporativo"
+version = "1.0.0"
+description = "Assistente corporativo com IA (LangChain + OpenRouter)"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+# Pacote sem módulo instalável próprio: os arquivos .py vivem na raiz do repo.
+# O runtime LangGraph usa "pip install -e ." e precisa apenas deste metadata.
+py-modules = ["agente_rag", "tools", "chart_tool", "main"]
